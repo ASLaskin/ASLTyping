@@ -6,6 +6,7 @@ const useHandLandmarks = () => {
   const [error, setError] = useState(null);
   const [landmarks, setLandmarks] = useState([]);
   const processingRef = useRef(false);
+  const landmarkerRef = useRef(null);
 
   useEffect(() => {
     const initHandLandMarker = async () => {
@@ -30,6 +31,7 @@ const useHandLandmarks = () => {
         });
 
         setHandLandmarker(landmarker);
+        landmarkerRef.current = landmarker;
         setIsReady(true);
       } catch (err) {
         setError(err);
@@ -39,8 +41,8 @@ const useHandLandmarks = () => {
     initHandLandMarker();
 
     return () => {
-      if (handLandmarker) {
-        handLandmarker.close();
+      if (landmarkerRef.current) {
+        landmarkerRef.current.close();
       }
     };
   }, []);
@@ -48,6 +50,11 @@ const useHandLandmarks = () => {
   const detectLandmarks = useCallback(
     async (videoElement) => {
       if (!handLandmarker || !isReady || !videoElement || processingRef.current) {
+        return [];
+      }
+
+      if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0 || 
+        videoElement.readyState < 2) {
         return [];
       }
 
@@ -75,6 +82,7 @@ const useHandLandmarks = () => {
           setLandmarks(detectedLandmarks);
         }
 
+        setLandmarks(detectedLandmarks)
         return detectedLandmarks;
       } catch (err) {
         setError(err);

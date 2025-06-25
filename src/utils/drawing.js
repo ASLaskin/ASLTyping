@@ -57,8 +57,7 @@ export const drawHandLandmarks = (
 		if (handLandmarks.length > 0) {
 			drawHandLabel(
 				ctx,
-				handLandmarks,
-				[0],
+				handLandmarks[0],
 				handedness,
 				canvasWidth,
 				canvasHeight,
@@ -73,9 +72,9 @@ const drawConnections = (ctx, landmarks, canvasWidth, canvasHeight, color) => {
 	ctx.lineWidth = 2;
 	ctx.globalAlpha = 0.8;
 
-	HAND_CONNECTIONS.forEach(([startIDx, endIdx]) => {
+	HAND_CONNECTIONS.forEach(([startIdx, endIdx]) => {
 		if (startIdx < landmarks.length && endIdx < landmarks.length) {
-			const start = landmarks[startIDx];
+			const start = landmarks[startIdx];
 			const end = landmarks[endIdx];
 
 			const startX = start.x * canvasWidth;
