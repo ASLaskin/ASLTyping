@@ -20,6 +20,7 @@ const CameraFeed = () => {
 	const classifierRef = useRef(new ASLClassifier());
 	const lastFrameTimeRef = useRef(0);
 	const textInputRef = useRef(null);
+	const progressAnimationRef = useRef(null); 
 
 	const {
 		detectLandmarks,
@@ -47,21 +48,24 @@ const CameraFeed = () => {
 				setCurrentPrediction(null);
 				classifierRef.current.reset();
 			}
+		} else if (!currentPrediction) {
+			setHoldProgress(0);
 		}
 	}, [currentPrediction, HOLD_DURATION]);
 
 	useEffect(() => {
-		let animationId = null;
-
-		const animate = () => {
+		let animationId;
+		
+		const animateProgress = () => {
 			updateHoldProgress();
+			
 			if (holdStartTimeRef.current && currentPrediction) {
-				animationId = requestAnimationFrame(animate);
+				animationId = requestAnimationFrame(animateProgress);
 			}
 		};
 
 		if (holdStartTimeRef.current && currentPrediction) {
-			animationId = requestAnimationFrame(animate);
+			animationId = requestAnimationFrame(animateProgress);
 		}
 
 		return () => {
@@ -210,9 +214,9 @@ const CameraFeed = () => {
 								) {
 									setCurrentPrediction(prediction);
 									holdStartTimeRef.current = Date.now();
+									setHoldProgress(0);
 								}
 							} else {
-						
 								if (currentPrediction) {
 									setCurrentPrediction(null);
 									holdStartTimeRef.current = null;
@@ -244,7 +248,7 @@ const CameraFeed = () => {
 				cancelAnimationFrame(animationRef.current);
 			}
 		};
-	}, [isHandLandmarkerReady, isLoading, detectLandmarks, landmarks]);
+	}, [isHandLandmarkerReady, isLoading, detectLandmarks, landmarks, currentPrediction]);
 
 	//stop camera when component unmounts
 	useEffect(() => {
@@ -264,6 +268,8 @@ const CameraFeed = () => {
 			</div>
 		);
 	}
+
+	const progressPercentage = Math.round(holdProgress * 100);
 
 	return (
 		<div className="flex flex-col justify-center items-center space-y-4">
@@ -311,16 +317,18 @@ const CameraFeed = () => {
 								Confidence: {Math.round(currentPrediction.confidence * 100)}%
 							</div>
 
-							{/* Progress Bar */}
 							<div className="w-64 mx-auto">
-								<div className="w-full bg-gray-200 rounded-full h-3">
+								<div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
 									<div
-										className="bg-blue-600 h-3 rounded-full transition-all duration-100"
-										style={{ width: `${holdProgress * 100}%` }}
+										className="bg-blue-600 h-full rounded-full transition-all duration-100 ease-linear"
+										style={{ 
+											width: `${progressPercentage}%`,
+											transform: `translateX(0%)` 
+										}}
 									></div>
 								</div>
 								<div className="text-xs text-gray-500 mt-1">
-									Hold for 2 seconds to add letter
+									Hold for 2 seconds to add letter ({progressPercentage}%)
 								</div>
 							</div>
 						</div>
