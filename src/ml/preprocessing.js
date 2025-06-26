@@ -25,7 +25,7 @@ export const normalizeHandLandmarks = (landmarks) => {
 
     //avoid dividing by zero
     if (scale === 0) {
-		return normalizedLandmarks.flat();
+		return normalizedLandmarks;
 	}
 
     //normalize to 0,1 range
@@ -38,7 +38,7 @@ export const normalizeHandLandmarks = (landmarks) => {
 	return scaledLandmarks;
 };
 
-export const flattenLandmarks = (normalizeHandLandmarks) => {
+export const flattenLandmarks = (normalizedLandmarks) => {
     return normalizedLandmarks.flatMap((landmark) => [
         landmark.x,
         landmark.y,
@@ -47,7 +47,7 @@ export const flattenLandmarks = (normalizeHandLandmarks) => {
 }
 
 export const calculateFingerAngles = (landmarks) => {
-    if (!normalizedLandmarks) {
+    if (!landmarks) {
 		return [];
 	}
 
@@ -87,6 +87,8 @@ export const calculateFingerAngles = (landmarks) => {
 			angles.push(angle);
 		}
     });
+
+    return angles;
 }
 
 export const calculateDistances = (landmarks) => {

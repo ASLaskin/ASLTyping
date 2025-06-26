@@ -8,7 +8,7 @@ export class ASLClassifier {
 		this.bufferSize = 5;
 	}
 
-	classifyHand(landmark, handedness = 'Right') {
+	classifyHand(landmarks, handedness = 'Right') {
 		if (!landmarks || landmarks.length < 21) {
 			return null;
 		}
@@ -48,16 +48,16 @@ export class ASLClassifier {
 	applyRules(fingerStates, landmarks) {
 		const { thumb, index, middle, ring, pinky } = fingerStates;
 
-		//a
+		//c
 		if (!index && !middle && !ring && !pinky && thumb) {
 			const thumbTip = landmarks[4];
 			const indexMcp = landmarks[5];
 			if (thumbTip.y > indexMcp.y) {
-				return 'A';
+				return 'C';
 			}
 		}
 
-		//c
+		//a
 		if (!index && !middle && !ring && !pinky && thumb) {
 			const indexTip = landmarks[8];
 			const thumbTip = landmarks[4];
@@ -66,7 +66,7 @@ export class ASLClassifier {
 					Math.pow(indexTip.y - thumbTip.y, 2)
 			);
 			if (distance > 0.1 && distance < 0.2) {
-				return 'C';
+				return 'A';
 			}
 		}
 

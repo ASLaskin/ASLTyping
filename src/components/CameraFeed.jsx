@@ -1,7 +1,9 @@
 'use client';
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import useHandLandmarks from '@/hooks/useHandLandmarks';
 import { drawHandLandmarks } from '@/utils/drawing';
+import { ASLClassifier } from '@/ml/classifier';
+import RecognizedTextInput from '@/components/RecognizedTextInput';
 
 const CameraFeed = () => {
 	const videoRef = useRef(null);
@@ -11,12 +13,63 @@ const CameraFeed = () => {
 	const animationRef = useRef();
 	const canvasRef = useRef(null);
 
+	const [currentPrediction, setCurrentPrediction] = useState(null);
+	const [holdProgress, setHoldProgress] = useState(0);
+
+	const holdStartTimeRef = useRef(null);
+	const classifierRef = useRef(new ASLClassifier());
+	const lastFrameTimeRef = useRef(0);
+	const textInputRef = useRef(null);
+
 	const {
 		detectLandmarks,
 		landmarks,
 		isReady: isHandLandmarkerReady,
 		error: handError,
 	} = useHandLandmarks();
+
+	const HOLD_DURATION = 2000;
+	const TARGET_FPS = 60;
+	const FRAME_INTERVAL = 1000 / TARGET_FPS;
+
+	const updateHoldProgress = useCallback(() => {
+		if (holdStartTimeRef.current && currentPrediction) {
+			const elapsed = Date.now() - holdStartTimeRef.current;
+			const progress = Math.min(elapsed / HOLD_DURATION, 1);
+			setHoldProgress(progress);
+
+			if (progress >= 1) {
+				if (textInputRef.current) {
+					textInputRef.current.addLetter(currentPrediction.letter);
+				}
+				holdStartTimeRef.current = null;
+				setHoldProgress(0);
+				setCurrentPrediction(null);
+				classifierRef.current.reset();
+			}
+		}
+	}, [currentPrediction, HOLD_DURATION]);
+
+	useEffect(() => {
+		let animationId = null;
+
+		const animate = () => {
+			updateHoldProgress();
+			if (holdStartTimeRef.current && currentPrediction) {
+				animationId = requestAnimationFrame(animate);
+			}
+		};
+
+		if (holdStartTimeRef.current && currentPrediction) {
+			animationId = requestAnimationFrame(animate);
+		}
+
+		return () => {
+			if (animationId) {
+				cancelAnimationFrame(animationId);
+			}
+		};
+	}, [currentPrediction, updateHoldProgress]);
 
 	useEffect(() => {
 		let mounted = true;
@@ -30,23 +83,22 @@ const CameraFeed = () => {
 					throw new Error('Camera access is not supported by this browser');
 				}
 
-				//camera access with a fallback
 				const constraints = {
 					video: {
 						width: { ideal: 640, min: 320, max: 1280 },
 						height: { ideal: 480, min: 240, max: 720 },
 						facingMode: 'user',
+						frameRate: { ideal: 30, max: 60 },
 					},
 					audio: false,
 				};
 
-				//here requests
 				let mediaStream;
 				try {
 					mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
 				} catch (err) {
 					mediaStream = await navigator.mediaDevices.getUserMedia({
-						video: true,
+						video: { frameRate: { ideal: 30, max: 60 } },
 						audio: false,
 					});
 				}
@@ -84,8 +136,6 @@ const CameraFeed = () => {
 				setIsLoading(false);
 			} catch (err) {
 				if (!mounted) return;
-
-				// console.error('Camera dont work');
 				setError(err.message);
 				setIsLoading(false);
 			}
@@ -93,7 +143,6 @@ const CameraFeed = () => {
 
 		startCamera();
 
-		//cleanup
 		return () => {
 			mounted = false;
 			if (stream) {
@@ -107,13 +156,19 @@ const CameraFeed = () => {
 			return;
 		}
 
-		const detectAndDraw = async () => {
+		const detectAndDraw = async (currentTime) => {
+			// Throttle frame rate
+			if (currentTime - lastFrameTimeRef.current < FRAME_INTERVAL) {
+				animationRef.current = requestAnimationFrame(detectAndDraw);
+				return;
+			}
+			lastFrameTimeRef.current = currentTime;
+
 			if (videoRef.current && canvasRef.current) {
 				const video = videoRef.current;
 				const canvas = canvasRef.current;
 				const ctx = canvas.getContext('2d');
 
-				//check video ready
 				if (
 					video.readyState < 2 ||
 					video.videoWidth === 0 ||
@@ -134,7 +189,46 @@ const CameraFeed = () => {
 
 				try {
 					await detectLandmarks(video);
+
+					ctx.clearRect(0, 0, canvas.width, canvas.height);
 					drawHandLandmarks(ctx, landmarks, canvas.width, canvas.height);
+
+					if (landmarks && landmarks.length > 0) {
+						const handLandmarks = landmarks[0]?.landmarks;
+						const handedness = landmarks[0]?.handedness || 'Right';
+
+						if (handLandmarks) {
+							const prediction = classifierRef.current.classifyHand(
+								handLandmarks,
+								handedness
+							);
+
+							if (prediction && prediction.confidence > 0.6) {
+								if (
+									!currentPrediction ||
+									currentPrediction.letter !== prediction.letter
+								) {
+									setCurrentPrediction(prediction);
+									holdStartTimeRef.current = Date.now();
+								}
+							} else {
+						
+								if (currentPrediction) {
+									setCurrentPrediction(null);
+									holdStartTimeRef.current = null;
+									setHoldProgress(0);
+									classifierRef.current.reset();
+								}
+							}
+						}
+					} else {
+						if (currentPrediction) {
+							setCurrentPrediction(null);
+							holdStartTimeRef.current = null;
+							setHoldProgress(0);
+							classifierRef.current.reset();
+						}
+					}
 				} catch (err) {
 					console.error('Hand detection error:', err);
 				}
@@ -143,7 +237,7 @@ const CameraFeed = () => {
 			animationRef.current = requestAnimationFrame(detectAndDraw);
 		};
 
-		detectAndDraw();
+		animationRef.current = requestAnimationFrame(detectAndDraw);
 
 		return () => {
 			if (animationRef.current) {
@@ -165,22 +259,24 @@ const CameraFeed = () => {
 		return (
 			<div className="flex flex-col items-center justify-center">
 				<div>Camera Error</div>
-				<div>{error}</div>
+				<div>{error || handError}</div>
 				<div>Make sure to allow camera access in your browser</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="flex flex-col justify-center items-center">
+		<div className="flex flex-col justify-center items-center space-y-4">
 			{(isLoading || !isHandLandmarkerReady) && (
-				<div>
+				<div className="text-center">
 					<div className="text-gray-600">
 						{isLoading ? 'Loading camera...' : 'Initializing hand detection...'}
 					</div>
-					<div className="text-gray-600">Accept Permissions to start </div>
+					<div className="text-gray-600">Accept Permissions to start</div>
 				</div>
 			)}
+
+			<RecognizedTextInput ref={textInputRef} />
 
 			<div className="relative">
 				<video
@@ -200,18 +296,39 @@ const CameraFeed = () => {
 			</div>
 
 			{!isLoading && isHandLandmarkerReady && (
-				<div className="mt-4 text-center">
+				<div className="text-center space-y-2">
 					<div className="text-sm text-gray-600">
-						Hand detection active - {landmarks.length} hand
-						{landmarks.length !== 1 ? 's' : ''} detected
+						Hand detection active - {landmarks?.length || 0} hand
+						{landmarks?.length !== 1 ? 's' : ''} detected
 					</div>
-					{landmarks.length > 0 && (
-						<div className="text-xs text-gray-500 mt-1">
-							{landmarks.map((hand, idx) => (
-								<span key={idx} className="inline-block mx-2">
-									{hand.handedness} hand ({Math.round(hand.confidence * 100)}%)
-								</span>
-							))}
+
+					{currentPrediction && (
+						<div className="space-y-2">
+							<div className="text-lg font-bold text-blue-600">
+								Recognizing: {currentPrediction.letter}
+							</div>
+							<div className="text-sm text-gray-500">
+								Confidence: {Math.round(currentPrediction.confidence * 100)}%
+							</div>
+
+							{/* Progress Bar */}
+							<div className="w-64 mx-auto">
+								<div className="w-full bg-gray-200 rounded-full h-3">
+									<div
+										className="bg-blue-600 h-3 rounded-full transition-all duration-100"
+										style={{ width: `${holdProgress * 100}%` }}
+									></div>
+								</div>
+								<div className="text-xs text-gray-500 mt-1">
+									Hold for 2 seconds to add letter
+								</div>
+							</div>
+						</div>
+					)}
+
+					{landmarks?.length > 0 && !currentPrediction && (
+						<div className="text-sm text-gray-500">
+							Make a clear ASL letter sign
 						</div>
 					)}
 				</div>
