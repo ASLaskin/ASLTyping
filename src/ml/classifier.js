@@ -48,11 +48,57 @@ export class ASLClassifier {
 	applyRules(fingerStates, landmarks) {
 		const { thumb, index, middle, ring, pinky } = fingerStates;
 
+		if (!thumb && index && middle && !ring && !pinky) {
+			const indexTip = landmarks[8];
+			const middleTip = landmarks[12];
+			const distance = this.calculateDistance(indexTip, middleTip);
+
+			if (distance > 0.1) {
+				return 'V';
+			} else {
+				return 'U';
+			}
+		}
+
+		if (thumb && !index && !middle && !ring && pinky) {
+			return 'Y';
+		}
+
+		if (!thumb && !index && !middle && !ring && !pinky) {
+			return 'E';
+		}
+
+		//l
+		if (thumb && index && !middle && !ring && !pinky) {
+			const thumbTip = landmarks[4];
+			const indexMcp = landmarks[5];
+			const indexTip = landmarks[8];
+
+			const thumbIndexAngle = this.calculateAngle(thumbTip, indexMcp, indexTip);
+			const distance = this.calculateDistance(thumbTip, indexTip);
+
+			if (thumbIndexAngle > 1.2 && distance > 0.08) {
+				return 'L';
+			}
+		}
+
+		if (!thumb && index && middle && ring && pinky) {
+			return 'B';
+		}
+
+		if (!thumb && !index && middle && !ring && !pinky) {
+			return ':(';
+		}
+
 		//c
 		if (!index && !middle && !ring && !pinky && thumb) {
 			const thumbTip = landmarks[4];
 			const indexMcp = landmarks[5];
-			if (thumbTip.y > indexMcp.y) {
+
+			const indexCurved = landmarks[5].y < landmarks[8].y;
+			const middleCurved = landmarks[9].y < landmarks[12].y;
+
+			if (thumbTip.y > indexMcp.y && indexCurved && middleCurved) {
 				return 'C';
 			}
 		}
@@ -61,11 +107,17 @@ export class ASLClassifier {
 		if (!index && !middle && !ring && !pinky && thumb) {
 			const indexTip = landmarks[8];
 			const thumbTip = landmarks[4];
-			const distance = Math.sqrt(
-				Math.pow(indexTip.x - thumbTip.x, 2) +
-					Math.pow(indexTip.y - thumbTip.y, 2)
-			);
-			if (distance > 0.1 && distance < 0.2) {
+			const indexMcp = landmarks[5];
+
+			const fingersFolded =
+				landmarks[8].y > landmarks[5].y &&
+				landmarks[12].y > landmarks[9].y &&
+				landmarks[16].y > landmarks[13].y &&
+				landmarks[20].y > landmarks[17].y;
+
+			const distance = this.calculateDistance(indexTip, thumbTip);
+
+			if (fingersFolded && distance > 0.05) {
 				return 'A';
 			}
 		}
@@ -74,26 +126,13 @@ export class ASLClassifier {
 		if (!index && middle && ring && pinky && thumb) {
 			const indexTip = landmarks[8];
 			const thumbTip = landmarks[4];
-			const distance = Math.sqrt(
-				Math.pow(indexTip.x - thumbTip.x, 2) +
-					Math.pow(indexTip.y - thumbTip.y, 2)
-			);
-			if (distance < 0.08) {
+			const indexMcp = landmarks[5];
+
+			const indexFolded = indexTip.y > indexMcp.y;
+			const distance = this.calculateDistance(indexTip, thumbTip);
+
+			if (indexFolded && distance < 0.08) {
 				return 'F';
-			}
-		}
-
-		//o
-		if (!index && !middle && !ring && !pinky && thumb) {
-			const thumbTip = landmarks[4];
-			const indexTip = landmarks[8];
-			const middleTip = landmarks[12];
-
-			const d1 = this.calculateDistance(thumbTip, indexTip);
-			const d2 = this.calculateDistance(thumbTip, middleTip);
-
-			if (d1 < 0.1 && d2 < 0.15) {
-				return 'O';
 			}
 		}
 
@@ -138,8 +177,8 @@ export class ASLClassifier {
 
 	calculateConfidence(prediction) {
 		if (!prediction || this.predictionBuffer.length === 0) {
-            return 0;
-        }
+			return 0;
+		}
 
 		const count = this.predictionBuffer.filter((p) => p === prediction).length;
 		return count / this.predictionBuffer.length;
