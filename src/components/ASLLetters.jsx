@@ -158,7 +158,7 @@ const ASLLetterCards = () => {
 						>
 							<div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg h-48 mb-4 overflow-hidden border border-gray-200">
 								<img
-									src={`/Signs/${item.letter.toLowerCase()}.png`}
+								  src={`/Signs/${item.letter}.png`}
 									alt={`ASL hand gesture for letter ${item.letter}`}
 									className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
 								/>
