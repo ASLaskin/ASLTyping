@@ -109,10 +109,9 @@ const ASLLetterCards = () => {
 						am currently working on adding more
 					</p>
 
-					{/* Try Making Words Button */}
 					<Dialog>
 						<DialogTrigger asChild>
-							<button className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+							<button className="inline-flex items-center px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg hover:from-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
 								<BookOpen className="w-5 h-5 mr-2" />
 								Try Making These Words
 							</button>

@@ -20,7 +20,7 @@ const CameraFeed = () => {
 	const classifierRef = useRef(new ASLClassifier());
 	const lastFrameTimeRef = useRef(0);
 	const textInputRef = useRef(null);
-	const progressAnimationRef = useRef(null); 
+	const progressAnimationRef = useRef(null);
 
 	const {
 		detectLandmarks,
@@ -55,10 +55,10 @@ const CameraFeed = () => {
 
 	useEffect(() => {
 		let animationId;
-		
+
 		const animateProgress = () => {
 			updateHoldProgress();
-			
+
 			if (holdStartTimeRef.current && currentPrediction) {
 				animationId = requestAnimationFrame(animateProgress);
 			}
@@ -248,7 +248,13 @@ const CameraFeed = () => {
 				cancelAnimationFrame(animationRef.current);
 			}
 		};
-	}, [isHandLandmarkerReady, isLoading, detectLandmarks, landmarks, currentPrediction]);
+	}, [
+		isHandLandmarkerReady,
+		isLoading,
+		detectLandmarks,
+		landmarks,
+		currentPrediction,
+	]);
 
 	//stop camera when component unmounts
 	useEffect(() => {
@@ -308,37 +314,39 @@ const CameraFeed = () => {
 						{landmarks?.length !== 1 ? 's' : ''} detected
 					</div>
 
-					{currentPrediction && (
-						<div className="space-y-2">
-							<div className="text-lg font-bold text-blue-600">
-								Recognizing: {currentPrediction.letter}
-							</div>
-							<div className="text-sm text-gray-500">
-								Confidence: {Math.round(currentPrediction.confidence * 100)}%
-							</div>
-
-							<div className="w-64 mx-auto">
-								<div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-									<div
-										className="bg-blue-600 h-full rounded-full transition-all duration-100 ease-linear"
-										style={{ 
-											width: `${progressPercentage}%`,
-											transform: `translateX(0%)` 
-										}}
-									></div>
+					<div className="h-32 flex flex-col justify-center space-y-2">
+						{currentPrediction ? (
+							<div className="space-y-2">
+								<div className="text-lg font-bold text-blue-600">
+									Recognizing: {currentPrediction.letter}
 								</div>
-								<div className="text-xs text-gray-500 mt-1">
-									Hold for 2 seconds to add letter ({progressPercentage}%)
+								<div className="text-sm text-gray-500">
+									Confidence: {Math.round(currentPrediction.confidence * 100)}%
+								</div>
+
+								<div className="w-64 mx-auto">
+									<div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+										<div
+											className="bg-blue-600 h-full rounded-full transition-all duration-100 ease-linear"
+											style={{
+												width: `${progressPercentage}%`,
+												transform: `translateX(0%)`,
+											}}
+										></div>
+									</div>
+									<div className="text-xs text-gray-500 mt-1">
+										Hold for 2 seconds to add letter ({progressPercentage}%)
+									</div>
 								</div>
 							</div>
-						</div>
-					)}
-
-					{landmarks?.length > 0 && !currentPrediction && (
-						<div className="text-sm text-gray-500">
-							Make a clear ASL letter sign
-						</div>
-					)}
+						) : (
+							landmarks?.length > 0 && (
+								<div className="text-sm text-gray-500">
+									Make a clear ASL letter sign
+								</div>
+							)
+						)}
+					</div>
 				</div>
 			)}
 		</div>

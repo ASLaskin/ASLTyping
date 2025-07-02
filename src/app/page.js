@@ -76,9 +76,6 @@ export default function Home() {
             <Button onClick={() => setShowWelcome(false)} className="w-full">
               Get Started
             </Button>
-            <Button variant="outline" onClick={() => setShowWelcome(false)} className="w-full">
-              Learn More About ASL
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
