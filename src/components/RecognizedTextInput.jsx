@@ -5,9 +5,11 @@ const RecognizedTextInput = forwardRef(({ onTextChange }, ref) => {
 
 	const handleChange = (e) => {
 		const newText = e.target.value;
-		setRecognizedText(newText);
-		if (onTextChange) {
-			onTextChange(newText);
+		if (newText.length <= recognizedText.length) {
+			setRecognizedText(newText);
+			if (onTextChange) {
+				onTextChange(newText);
+			}
 		}
 	};
 
