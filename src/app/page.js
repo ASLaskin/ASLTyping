@@ -5,6 +5,7 @@ import { Hand, Zap, Shield } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import ASLLetterCards from "@/components/ASLLetters";
 
 export default function Home() {
   const [showWelcome, setShowWelcome] = useState(true);
@@ -42,6 +43,7 @@ export default function Home() {
         </div>
 
         <CameraFeed />
+        <ASLLetterCards/>
       </main>
 
       <Dialog open={showWelcome} onOpenChange={setShowWelcome}>
